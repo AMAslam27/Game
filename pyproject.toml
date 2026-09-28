@@ -1,0 +1,14 @@
+dependencies = [
+    "numpy",
+    "torch",
+    "pyyaml",
+    "matplotlib",
+    "pandas",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+    "mypy",
+]
