@@ -1,0 +1,15 @@
+services:
+  tictactoe:
+    build: .
+    stdin_open: true
+    tty: true
+    volumes:
+      - .:/app
+    command: ["--x", "human", "--o", "human"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
