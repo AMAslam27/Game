@@ -3,9 +3,14 @@ PLAYER_X = 1
 PLAYER_O = -1
 
 WIN_LINES = (
-    (0, 1, 2), (3, 4, 5), (6, 7, 8),  # rows
-    (0, 3, 6), (1, 4, 7), (2, 5, 8),  # columns
-    (0, 4, 8), (2, 4, 6),             # diagonals
+    (0, 1, 2),
+    (3, 4, 5),
+    (6, 7, 8),  # rows
+    (0, 3, 6),
+    (1, 4, 7),
+    (2, 5, 8),  # columns
+    (0, 4, 8),
+    (2, 4, 6),  # diagonals
 )
 
 
@@ -52,12 +57,15 @@ class TicTacToe:
     def winner(self):
         """Return PLAYER_X, PLAYER_O, or EMPTY (0) if there is no winner."""
         for a, b, c in WIN_LINES:
-            if self.board[a] != EMPTY and self.board[a] == self.board[b] == self.board[c]:
+            if (
+                self.board[a] != EMPTY
+                and self.board[a] == self.board[b] == self.board[c]
+            ):
                 return self.board[a]
         return EMPTY
 
     def render(self):
         symbols = {PLAYER_X: "X", PLAYER_O: "O", EMPTY: "."}
         for r in range(3):
-            print(" ".join(symbols[v] for v in self.board[r * 3:r * 3 + 3]))
+            print(" ".join(symbols[v] for v in self.board[r * 3 : r * 3 + 3]))
         print()

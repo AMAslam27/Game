@@ -9,12 +9,11 @@ WORKDIR /app
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install poetry
 
-# Install dependencies first (better layer caching): this layer only
-# rebuilds when pyproject.toml / poetry.lock change, not on every code edit.
-# The cache mount persists downloaded wheels (incl. the large CUDA packages)
-# across builds, so only the *first* build pays the full download cost.
+# Install dependencies first for better layer caching.
 COPY pyproject.toml poetry.lock* ./
+
 RUN --mount=type=cache,target=/root/.cache/pypoetry \
+    --mount=type=cache,target=/root/.cache/pip \
     poetry install --only main --no-root
 
 COPY . .

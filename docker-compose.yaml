@@ -1,10 +1,10 @@
 services:
   tictactoe:
     build: .
-    stdin_open: true   # keep stdin open for `input()` prompts
-    tty: true           # allocate a tty so the CLI prints/reads cleanly
+    stdin_open: true
+    tty: true
     volumes:
-      - .:/app           # mount source so code edits don't require a rebuild
+      - .:/app
     command: ["--x", "human", "--o", "human"]
     deploy:
       resources:

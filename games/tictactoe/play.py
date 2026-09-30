@@ -2,22 +2,20 @@
 
 A *policy* is any callable: policy(game) -> action (0-8), or None to quit.
 """
+
 import random
 
-from .rules import TicTacToe, PLAYER_X, PLAYER_O, EMPTY
+from .rules import EMPTY, PLAYER_O, PLAYER_X, TicTacToe
 
 NAMES = {PLAYER_X: "X", PLAYER_O: "O"}
 
 
 def show_board(game):
     """Print the board; empty squares show their number (1-9) as a hint."""
-    cells = [
-        NAMES[v] if v != EMPTY else str(i + 1)
-        for i, v in enumerate(game.board)
-    ]
+    cells = [NAMES[v] if v != EMPTY else str(i + 1) for i, v in enumerate(game.board)]
     print()
     for r in range(3):
-        print(" " + " | ".join(cells[r * 3:r * 3 + 3]))
+        print(" " + " | ".join(cells[r * 3 : r * 3 + 3]))
         if r < 2:
             print("---+---+---")
     print()
@@ -28,7 +26,11 @@ def human_policy(game):
     legal = game.legal_actions()
     name = NAMES[game.current_player]
     while True:
-        text = input(f"Player {name}, choose a square (1-9, or 'q' to quit): ").strip().lower()
+        text = (
+            input(f"Player {name}, choose a square (1-9, or 'q' to quit): ")
+            .strip()
+            .lower()
+        )
         if text in ("q", "quit"):
             return None
         if not text.isdigit():

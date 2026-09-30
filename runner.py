@@ -5,10 +5,11 @@ Examples:
     python runner.py --x human --o random     # you (X) vs random bot
     python runner.py --x random --o random --games 1000 --quiet
 """
+
 import argparse
 
-from games.tictactoe.play import play_game, human_policy, random_policy, NAMES
-from games.tictactoe.rules import PLAYER_X, PLAYER_O, EMPTY
+from games.tictactoe.play import human_policy, play_game, random_policy
+from games.tictactoe.rules import EMPTY, PLAYER_O, PLAYER_X
 
 # Register new players here (e.g. a trained agent) to make them selectable.
 POLICIES = {
@@ -19,10 +20,14 @@ POLICIES = {
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Run TicTacToe games.")
-    parser.add_argument("--x", choices=POLICIES, default="human", help="player X (moves first)")
+    parser.add_argument(
+        "--x", choices=POLICIES, default="human", help="player X (moves first)"
+    )
     parser.add_argument("--o", choices=POLICIES, default="human", help="player O")
     parser.add_argument("--games", type=int, default=1, help="number of games to play")
-    parser.add_argument("--quiet", action="store_true", help="don't print boards or per-game results")
+    parser.add_argument(
+        "--quiet", action="store_true", help="don't print boards or per-game results"
+    )
     return parser.parse_args()
 
 
