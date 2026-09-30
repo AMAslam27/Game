@@ -1,3 +1,8 @@
+[project]
+name = "tictactoe-rl"
+version = "0.1.0"
+description = "RL environments and agents for classic games, starting with TicTacToe."
+requires-python = ">=3.11"
 dependencies = [
     "numpy",
     "torch",
@@ -12,3 +17,18 @@ dev = [
     "ruff",
     "mypy",
 ]
+
+[tool.poetry]
+packages = [{ include = "games" }]
+
+[tool.poetry.dependencies]
+torch = { source = "pytorch-cuda" }
+
+[[tool.poetry.source]]
+name = "pytorch-cuda"
+url = "https://download.pytorch.org/whl/cu130"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
