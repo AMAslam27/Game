@@ -5,7 +5,8 @@ Complete each game's milestones before moving on to the next game.
 ## Tic-Tac-Toe
 
 - [x] **Implement Tic-Tac-Toe rules, environment, random opponent, and human play** — Add the game runner and tests for legal moves, state transitions, and game outcomes.
-- [ ] **Complete Tic-Tac-Toe minimax and baseline evaluation** — Validate optimal play and report results across repeated games against baseline opponents.
+- [x] **Complete Tic-Tac-Toe minimax and baseline evaluation** — Validate optimal play and report results across repeated games against baseline opponents.
+- [x] **Record and report Tic-Tac-Toe run results** — Add SQLite recording, timestamped charts, SQL analysis queries, progress reporting, diagnostic logging, and isolated unit tests.
 - [ ] **Train and evaluate a Tic-Tac-Toe RL agent** — Add reproducible training, GPU support, checkpoints, training metrics, baseline evaluation, and human play against saved agents.
 - [ ] **Implement and evaluate Tic-Tac-Toe self-play** — Train against itself and previous model versions, and measure improvement across multiple random seeds.
 
