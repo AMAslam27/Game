@@ -133,3 +133,25 @@ The project is successful when:
 -   Population-based self-play.
 -   Model-vs-model tournaments.
 -   GPU-optimised parallel environments.
+
+## Local CI checks
+
+With Poetry and GNU Make available on your PATH, run these commands from the
+project root:
+
+```text
+make install
+make ci
+```
+
+`make ci` runs the same checks as `.github/workflows/ci.yml`: Ruff lint,
+Ruff format verification, mypy, and pytest. Checks run sequentially and stop
+on the first failure. Dependencies only need reinstalling when they change.
+Running `make` without a target also runs the CI checks.
+
+Individual checks are available as `make lint`, `make format-check`,
+`make typecheck`, and `make test`. Use `make format` to apply formatting.
+
+On Windows, these commands require GNU Make (not Microsoft's `nmake`).
+The checks use your Poetry environment; GitHub Actions currently uses Python
+3.11 on Ubuntu, so using Python 3.11 locally gives a closer match.
