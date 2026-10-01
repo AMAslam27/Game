@@ -5,6 +5,7 @@ from pathlib import Path
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 
+
 def plot_results(results, policy_x_name, policy_o_name, *, output_path):
     """Plot X wins, draws and O wins from a {-1, 0, 1} result mapping.
 

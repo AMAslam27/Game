@@ -13,6 +13,7 @@ def test_parse_args_defaults(monkeypatch):
     assert args.o == "human"
     assert args.games == 1
     assert args.quiet is False
+    assert args.plot_file is None
 
 
 def test_parse_args_custom_arguments(monkeypatch):
@@ -66,6 +67,7 @@ def test_main_plays_requested_number_of_games(monkeypatch):
                 "o": "random",
                 "games": 3,
                 "quiet": True,
+                "plot_file": None,
             },
         )(),
     )
@@ -100,6 +102,7 @@ def test_main_counts_wins_and_draws(monkeypatch, capsys):
                 "o": "random",
                 "games": 3,
                 "quiet": True,
+                "plot_file": None,
             },
         )(),
     )
@@ -134,6 +137,7 @@ def test_main_does_not_print_board_in_quiet_mode(monkeypatch, capsys):
                 "o": "random",
                 "games": 1,
                 "quiet": True,
+                "plot_file": None,
             },
         )(),
     )
@@ -166,6 +170,7 @@ def test_main_passes_verbose_when_not_quiet(monkeypatch, capsys):
                 "o": "random",
                 "games": 1,
                 "quiet": False,
+                "plot_file": None,
             },
         )(),
     )
@@ -198,6 +203,7 @@ def test_main_stops_when_human_quits(monkeypatch):
                 "o": "random",
                 "games": 10,
                 "quiet": True,
+                "plot_file": None,
             },
         )(),
     )
@@ -224,6 +230,7 @@ def test_main_asks_to_play_again_after_human_game(monkeypatch):
             o="random",
             games=1,
             quiet=True,
+            plot_file=None,
         ),
     )
 
@@ -255,6 +262,7 @@ def test_main_stops_when_user_declines_to_play_again(monkeypatch):
                 "o": "random",
                 "games": 1,
                 "quiet": True,
+                "plot_file": None,
             },
         )(),
     )
@@ -271,3 +279,95 @@ def test_main_stops_when_user_declines_to_play_again(monkeypatch):
     runner.main()
 
     assert len(calls) == 1
+
+
+def test_parse_args_plot_file_and_minimax(monkeypatch):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "minimax", "--plot-file", "results/chart.png"])
+    args = runner.parse_args()
+    assert args.x == "minimax"
+    assert args.plot_file == "results/chart.png"
+
+
+def test_progress_reports_hundreds_and_final_partial_batch(capsys):
+    for completed in range(1, 251):
+        runner.print_progress(completed, 250)
+    assert capsys.readouterr().out.splitlines() == [
+        "100/250 games completed", "200/250 games completed", "250/250 games completed",
+    ]
+
+
+def test_progress_reports_exact_hundred_once(capsys):
+    runner.print_progress(100, 100)
+    assert capsys.readouterr().out == "100/100 games completed\n"
+
+
+def test_main_reports_progress_in_quiet_mode(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--games", "250", "--quiet"])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: EMPTY)
+    runner.main()
+    output = capsys.readouterr().out
+    assert "100/250 games completed" in output
+    assert "200/250 games completed" in output
+    assert "250/250 games completed" in output
+    assert "Draws:  250" in output
+
+
+def test_main_does_not_count_abandoned_game(monkeypatch, capsys):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--o", "random", "--games", "100", "--quiet"])
+    outcomes = iter([PLAYER_X, None])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: next(outcomes))
+    runner.main()
+    output = capsys.readouterr().out
+    assert "Results over 1 game(s):" in output
+    assert "100/100 games completed" not in output
+
+
+def test_main_passes_results_to_plotter(monkeypatch, capsys):
+    import sys
+    from types import ModuleType
+    from tests.unit_tests.common.mock_utils import FakePlotter
+
+    plotter = FakePlotter(result="results/chart.png")
+    plots = ModuleType("evaluation.plots")
+    plots.plot_results = plotter
+    monkeypatch.setitem(sys.modules, "evaluation.plots", plots)
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--games", "3", "--quiet", "--plot-file", "results/chart.png"])
+    outcomes = iter([PLAYER_X, PLAYER_O, EMPTY])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: next(outcomes))
+    runner.main()
+    assert plotter.calls == [
+        ({PLAYER_X: 1, PLAYER_O: 1, EMPTY: 1}, "random", "random", {"output_path": "results/chart.png"}),
+    ]
+    assert "Chart saved to: results/chart.png" in capsys.readouterr().out
+
+
+def test_main_does_not_plot_without_flag(monkeypatch, capsys):
+    import sys
+    from types import ModuleType
+    from tests.unit_tests.common.mock_utils import FakePlotter
+
+    plotter = FakePlotter()
+    plots = ModuleType("evaluation.plots")
+    plots.plot_results = plotter
+    monkeypatch.setitem(sys.modules, "evaluation.plots", plots)
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--quiet"])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: EMPTY)
+    runner.main()
+    assert plotter.calls == []
+    assert "Chart saved" not in capsys.readouterr().out
+
+
+def test_main_does_not_report_chart_for_empty_run(monkeypatch, capsys):
+    import sys
+    from types import ModuleType
+    from tests.unit_tests.common.mock_utils import FakePlotter
+
+    plotter = FakePlotter()
+    plots = ModuleType("evaluation.plots")
+    plots.plot_results = plotter
+    monkeypatch.setitem(sys.modules, "evaluation.plots", plots)
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--quiet", "--plot-file", "results/chart.png"])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: None)
+    runner.main()
+    assert plotter.calls[0][0] == {PLAYER_X: 0, PLAYER_O: 0, EMPTY: 0}
+    assert "Chart saved" not in capsys.readouterr().out

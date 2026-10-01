@@ -13,11 +13,7 @@ from games.tictactoe.rules import EMPTY, PLAYER_O, PLAYER_X
 from players.minimax import minimax_policy
 
 # Register new players here (e.g. a trained agent) to make them selectable.
-POLICIES = {
-    "human": human_policy,
-    "random": random_policy,
-    "minimax": minimax_policy
-}
+POLICIES = {"human": human_policy, "random": random_policy, "minimax": minimax_policy}
 
 
 def parse_args():
@@ -36,9 +32,11 @@ def parse_args():
     )
     return parser.parse_args()
 
+
 def print_progress(completed, total):
     if completed % 100 == 0 or completed == total:
         print(f"{completed}/{total} games completed", flush=True)
+
 
 def print_summary(results):
     total = sum(results.values())
