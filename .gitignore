@@ -100,3 +100,16 @@ datasets/
 tmp/
 temp/
 *.tmp
+# Local SQLite experiment databases and journal files
+*.sqlite3
+*.sqlite3-*
+
+# =========================
+# Plots
+# =========================
+
+*.png
+*.pdf
+
+# Automatically generated run charts
+/results/*/plots/

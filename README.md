@@ -155,3 +155,35 @@ Individual checks are available as `make lint`, `make format-check`,
 On Windows, these commands require GNU Make (not Microsoft's `nmake`).
 The checks use your Poetry environment; GitHub Actions currently uses Python
 3.11 on Ubuntu, so using Python 3.11 locally gives a closer match.
+
+## Recording results
+
+Every batch of games is recorded in `results/games.sqlite3` under the project
+root, independent of the working directory. Each human replay creates a new run.
+Completed games are committed individually. Runs have UTC start/end timestamps
+and a status: running, completed, abandoned, interrupted, or failed. A hard
+process kill may leave a run marked running; committed games remain available.
+
+```text
+poetry run python runner.py --x random --o random --games 1000 --quiet --seed 42
+poetry run python runner.py --x minimax --o random --games 100 --db-file results/comparison.sqlite3
+```
+
+`--seed` resets Python's random generator at the start of each batch; replaying
+the same policies with the same seed reproduces their random choices. A seed is
+only useful for policies that use this generator. A custom `--db-file` path is
+relative to the current working directory unless absolute.
+
+`evaluation/queries.sql` contains run summaries and opponent comparisons to
+execute against the database. The recorder uses parameterised SQL, foreign keys,
+and transactions; no database server or extra dependency is needed. Diagnostic
+messages use Python logging on stderr. SQLite files are excluded from Git.
+
+### Automatic charts
+
+Each game batch automatically saves a chart under `results/tictactoe/plots/`, named with
+its recorded UTC start timestamp (including microseconds) and database run ID,
+for example `20261001T123025123456Z_run-42.png`. Human replays have separate
+charts showing only that batch. Runs without completed games create no chart.
+`--plot-file results/chart.png` overrides the path; subsequent human replay
+batches append their run ID to that custom filename to preserve earlier charts.

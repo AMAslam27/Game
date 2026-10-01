@@ -86,3 +86,46 @@ class FakePlotter:
     def __call__(self, results, policy_x, policy_o, **kwargs):
         self.calls.append((results.copy(), policy_x, policy_o, kwargs))
         return self.result
+
+
+class FakeCursor:
+    def __init__(self, lastrowid):
+        self.lastrowid = lastrowid
+
+
+class FakeConnection:
+    def __init__(self):
+        self.executions = []
+        self.scripts = []
+        self.commits = 0
+        self.rollbacks = 0
+        self.closed = False
+        self.next_id = 1
+        self.error = None
+
+    def execute(self, sql, parameters=()):
+        self.executions.append((" ".join(sql.split()), parameters))
+        if self.error is not None:
+            raise self.error
+        run_id = self.next_id
+        if "INSERT INTO runs" in sql:
+            self.next_id += 1
+        return FakeCursor(run_id)
+
+    def executescript(self, sql):
+        self.scripts.append(sql)
+        if self.error is not None:
+            raise self.error
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, error_type, error, traceback):
+        if error_type is None:
+            self.commits += 1
+        else:
+            self.rollbacks += 1
+        return False
+
+    def close(self):
+        self.closed = True

@@ -1,6 +1,11 @@
 from argparse import Namespace
+from pathlib import Path
+
+import pytest
 
 import runner
+from evaluation import artifacts
+from tests.unit_tests.common.mock_utils import FakePlotter
 from games.tictactoe.rules import EMPTY, PLAYER_O, PLAYER_X
 
 
@@ -68,6 +73,8 @@ def test_main_plays_requested_number_of_games(monkeypatch):
                 "games": 3,
                 "quiet": True,
                 "plot_file": None,
+                "db_file": "unused.sqlite3",
+                "seed": None,
             },
         )(),
     )
@@ -103,6 +110,8 @@ def test_main_counts_wins_and_draws(monkeypatch, capsys):
                 "games": 3,
                 "quiet": True,
                 "plot_file": None,
+                "db_file": "unused.sqlite3",
+                "seed": None,
             },
         )(),
     )
@@ -138,6 +147,8 @@ def test_main_does_not_print_board_in_quiet_mode(monkeypatch, capsys):
                 "games": 1,
                 "quiet": True,
                 "plot_file": None,
+                "db_file": "unused.sqlite3",
+                "seed": None,
             },
         )(),
     )
@@ -171,6 +182,8 @@ def test_main_passes_verbose_when_not_quiet(monkeypatch, capsys):
                 "games": 1,
                 "quiet": False,
                 "plot_file": None,
+                "db_file": "unused.sqlite3",
+                "seed": None,
             },
         )(),
     )
@@ -204,6 +217,8 @@ def test_main_stops_when_human_quits(monkeypatch):
                 "games": 10,
                 "quiet": True,
                 "plot_file": None,
+                "db_file": "unused.sqlite3",
+                "seed": None,
             },
         )(),
     )
@@ -231,6 +246,8 @@ def test_main_asks_to_play_again_after_human_game(monkeypatch):
             games=1,
             quiet=True,
             plot_file=None,
+            db_file="unused.sqlite3",
+            seed=None,
         ),
     )
 
@@ -263,6 +280,8 @@ def test_main_stops_when_user_declines_to_play_again(monkeypatch):
                 "games": 1,
                 "quiet": True,
                 "plot_file": None,
+                "db_file": "unused.sqlite3",
+                "seed": None,
             },
         )(),
     )
@@ -323,51 +342,145 @@ def test_main_does_not_count_abandoned_game(monkeypatch, capsys):
 
 
 def test_main_passes_results_to_plotter(monkeypatch, capsys):
-    import sys
-    from types import ModuleType
-    from tests.unit_tests.common.mock_utils import FakePlotter
 
     plotter = FakePlotter(result="results/chart.png")
-    plots = ModuleType("evaluation.plots")
-    plots.plot_results = plotter
-    monkeypatch.setitem(sys.modules, "evaluation.plots", plots)
+    monkeypatch.setattr(artifacts, "plot_results", plotter)
     monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--games", "3", "--quiet", "--plot-file", "results/chart.png"])
     outcomes = iter([PLAYER_X, PLAYER_O, EMPTY])
     monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: next(outcomes))
     runner.main()
     assert plotter.calls == [
-        ({PLAYER_X: 1, PLAYER_O: 1, EMPTY: 1}, "random", "random", {"output_path": "results/chart.png"}),
+        ({PLAYER_X: 1, PLAYER_O: 1, EMPTY: 1}, "random", "random", {"output_path": Path("results/chart.png")}),
     ]
     assert "Chart saved to: results/chart.png" in capsys.readouterr().out
 
 
-def test_main_does_not_plot_without_flag(monkeypatch, capsys):
-    import sys
-    from types import ModuleType
-    from tests.unit_tests.common.mock_utils import FakePlotter
+def test_main_plots_by_default(monkeypatch, capsys):
 
     plotter = FakePlotter()
-    plots = ModuleType("evaluation.plots")
-    plots.plot_results = plotter
-    monkeypatch.setitem(sys.modules, "evaluation.plots", plots)
+    monkeypatch.setattr(artifacts, "plot_results", plotter)
     monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--quiet"])
     monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: EMPTY)
     runner.main()
-    assert plotter.calls == []
+    assert len(plotter.calls) == 1
+    path = plotter.calls[0][3]["output_path"]
+    assert path.parent.name == "plots"
+    assert path.parent.parent.name == "tictactoe"
+    assert path.name.endswith("_run-1.png")
     assert "Chart saved" not in capsys.readouterr().out
 
 
 def test_main_does_not_report_chart_for_empty_run(monkeypatch, capsys):
-    import sys
-    from types import ModuleType
-    from tests.unit_tests.common.mock_utils import FakePlotter
 
     plotter = FakePlotter()
-    plots = ModuleType("evaluation.plots")
-    plots.plot_results = plotter
-    monkeypatch.setitem(sys.modules, "evaluation.plots", plots)
+    monkeypatch.setattr(artifacts, "plot_results", plotter)
     monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--quiet", "--plot-file", "results/chart.png"])
     monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: None)
     runner.main()
     assert plotter.calls[0][0] == {PLAYER_X: 0, PLAYER_O: 0, EMPTY: 0}
     assert "Chart saved" not in capsys.readouterr().out
+
+
+def test_main_records_completed_games_and_closes_connection(monkeypatch, fake_connection):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--games", "3", "--quiet", "--seed", "42"])
+    outcomes = iter([1, 0, -1])
+    seeds = []
+    monkeypatch.setattr(runner.random, "seed", seeds.append)
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: next(outcomes))
+    runner.main()
+    game_parameters = [params for sql, params in fake_connection.executions if "INSERT INTO games" in sql]
+    assert game_parameters == [(1, 1, 1), (1, 2, 0), (1, 3, -1)]
+    assert fake_connection.executions[-1][1][1] == "completed"
+    assert seeds == [42]
+    assert fake_connection.closed
+
+
+def test_main_records_abandoned_status(monkeypatch, fake_connection):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--games", "2", "--quiet"])
+    outcomes = iter([1, None])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: next(outcomes))
+    runner.main()
+    assert fake_connection.executions[-1][1][1] == "abandoned"
+    assert len([sql for sql, _ in fake_connection.executions if "INSERT INTO games" in sql]) == 1
+    assert fake_connection.closed
+
+
+def test_main_records_failure_and_preserves_exception(monkeypatch, fake_connection):
+
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--quiet"])
+
+    def fail_game(*args, **kwargs):
+        raise ValueError("Policy failed")
+
+    monkeypatch.setattr(runner, "play_game", fail_game)
+    with pytest.raises(ValueError, match="Policy failed"):
+        runner.main()
+    assert fake_connection.executions[-1][1][1] == "failed"
+    assert fake_connection.closed
+
+
+def test_main_records_keyboard_interruption(monkeypatch, fake_connection):
+
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "random", "--o", "random", "--quiet"])
+
+    def interrupt_game(*args, **kwargs):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(runner, "play_game", interrupt_game)
+    with pytest.raises(KeyboardInterrupt):
+        runner.main()
+    assert fake_connection.executions[-1][1][1] == "interrupted"
+    assert fake_connection.closed
+
+
+def test_main_creates_separate_run_for_each_replay(monkeypatch, fake_connection):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--quiet"])
+    answers = iter(["y", "n"])
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: 0)
+    runner.main()
+    game_parameters = [params for sql, params in fake_connection.executions if "INSERT INTO games" in sql]
+    assert game_parameters == [(1, 1, 0), (2, 1, 0)]
+    assert fake_connection.closed
+
+
+def test_parse_args_rejects_nonpositive_game_count(monkeypatch):
+
+    monkeypatch.setattr("sys.argv", ["runner.py", "--games", "0"])
+    with pytest.raises(SystemExit) as error:
+        runner.parse_args()
+    assert error.value.code == 2
+
+
+def test_parse_args_database_override(monkeypatch):
+
+    monkeypatch.setattr("sys.argv", ["runner.py", "--db-file", "results/custom.sqlite3", "--seed", "7"])
+    args = runner.parse_args()
+    assert args.db_file == Path("results/custom.sqlite3")
+    assert args.seed == 7
+
+
+def test_replay_plots_each_batch_separately(monkeypatch, isolate_runner_plotting):
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--quiet"])
+    outcomes = iter([1, -1])
+    answers = iter(["y", "n"])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: next(outcomes))
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+    runner.main()
+    calls = isolate_runner_plotting.calls
+    assert calls[0][0] == {1: 1, 0: 0, -1: 0}
+    assert calls[1][0] == {1: 0, 0: 0, -1: 1}
+    assert calls[0][3]["output_path"].name.endswith("_run-1.png")
+    assert calls[1][3]["output_path"].name.endswith("_run-2.png")
+
+
+def test_replay_does_not_overwrite_explicit_plot_path(monkeypatch, isolate_runner_plotting):
+
+    monkeypatch.setattr("sys.argv", ["runner.py", "--x", "human", "--quiet", "--plot-file", "results/chart.png"])
+    answers = iter(["y", "n"])
+    monkeypatch.setattr(runner, "play_game", lambda *args, **kwargs: 0)
+    monkeypatch.setattr("builtins.input", lambda prompt: next(answers))
+    runner.main()
+    assert [call[3]["output_path"] for call in isolate_runner_plotting.calls] == [
+        Path("results/chart.png"), Path("results/chart_run-2.png"),
+    ]
